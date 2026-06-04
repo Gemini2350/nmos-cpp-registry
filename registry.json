@@ -6,5 +6,6 @@
     "http_port": 8010,
     "query_ws_port": 8011,
     "admin_port": 8010,
-    "registration_expiry_interval": 12
+    "registration_expiry_interval": 12,
+    "ptp_domain_number": 0
 }

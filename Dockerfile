@@ -104,9 +104,11 @@ LABEL org.opencontainers.image.title="nmos-cpp-registry" \
 
 # Runtime libs. Conan links its dependencies statically, so we mainly need
 # libstdc++ (already present) plus libdns_sd from mDNSResponder, installed below.
+# mosquitto: an MQTT broker for IS-07 event transport (optional, started by entrypoint).
 RUN apt-get update && apt-get install -y --no-install-recommends \
         ca-certificates make \
         libssl3 libatomic1 \
+        mosquitto \
     && rm -rf /var/lib/apt/lists/*
 
 # Bring over the patched mDNSResponder tree and install only its artifacts
@@ -123,8 +125,8 @@ COPY registry.json entrypoint.sh /home/
 RUN chmod +x /home/entrypoint.sh
 
 # 8010 IS-04 Registration/Query API + admin UI (nmos-js, served at /admin/)
-# 8011 Query API WebSocket               5353/udp mDNS
-EXPOSE 8010 8011 5353/udp
+# 8011 Query API WebSocket   1883 MQTT broker (IS-07)   5353/udp mDNS
+EXPOSE 8010 8011 1883 5353/udp
 
 # WORKDIR matters: the registry serves the admin UI from ./admin
 WORKDIR /home

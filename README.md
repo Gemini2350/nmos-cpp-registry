@@ -18,6 +18,7 @@ nmos-cpp no longer supports. Current nmos-cpp requires **Conan 2.20+** and
 | `nmos-cpp-registry` | Built from `sony/nmos-cpp` (pinned commit, see `Dockerfile`), Conan 2 toolchain, `Release` build |
 | nmos-js Web UI | Served by the registry itself at `/admin/` on the registry port (`8010`) |
 | DNS-SD | Apple **mDNSResponder** built into the image (no host Avahi conflict) |
+| MQTT broker | **mosquitto** for IS-07 event transport, on `1883`, advertised via mDNS (`_nmos-mqtt._tcp`) |
 | Base | `ubuntu:24.04`, multi-stage → slim runtime |
 
 ## Quick start (Docker Hub)
@@ -68,6 +69,7 @@ docker compose up -d        # uses docker-compose.yml (host network)
 |------|---------|
 | 8010 | IS-04 Registration API + Query API (HTTP) **and** the nmos-js browser UI at `/admin/` |
 | 8011 | Query API WebSocket |
+| 1883 | MQTT broker (mosquitto) for IS-07 |
 | 5353/udp | mDNS / DNS-SD |
 
 - Browser UI: `http://<host>:8010/admin/`
@@ -87,7 +89,20 @@ docker run -d --network host \
 ```
 
 Or point at a different file inside the container with `-e REGISTRY_JSON=/path.json`.
-Set `-e UPDATE_LABEL=TRUE` to stamp the registry `label` with the container hostname.
+
+Environment variables:
+
+| Variable | Default | Effect |
+|----------|---------|--------|
+| `REGISTRY_JSON` | `/home/registry.json` | Path to the registry config inside the container |
+| `UPDATE_LABEL` | `FALSE` | If `TRUE`, stamp the registry `label` with the container hostname |
+| `RUN_MQTT` | `TRUE` | Start the bundled mosquitto MQTT broker (IS-07) |
+| `MQTT_PORT` | `1883` | MQTT broker listen port |
+| `ADVERTISE_MQTT` | `TRUE` | Advertise the broker via mDNS (`_nmos-mqtt._tcp`) |
+
+The default [`registry.json`](registry.json) sets **`ptp_domain_number: 0`**, so the
+IS-09 System API at `/x-nmos/system/v1.0/global/` reports PTP domain `0`
+(nmos-cpp's own default is `127`). Change it there if your PTP domain differs.
 
 Full list of settings:
 <https://github.com/sony/nmos-cpp/blob/master/Development/nmos/settings.h>
@@ -96,9 +111,10 @@ Full list of settings:
 
 - This image runs **HTTP only** (no TLS), which is what NMOS Crosspoint expects
   by default. For secure (BCP-003-01) operation you'd add certificates and the
-  corresponding `registry.json` settings.
-- No MQTT broker is included (rhastie's image bundled mosquitto for IS-07). Add
-  one separately if you need IS-07 over MQTT.
+  corresponding `registry.json` settings (and a reverse proxy or native
+  `server_secure`).
+- A **mosquitto** MQTT broker for IS-07 is bundled on port `1883` and advertised
+  via mDNS. Disable it with `-e RUN_MQTT=FALSE`.
 
 ## Continuous integration
 

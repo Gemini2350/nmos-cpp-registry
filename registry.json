@@ -1,0 +1,10 @@
+{
+    "pri": 10,
+    "logging_level": 0,
+    "http_trace": false,
+    "label": "nmos-crosspoint-registry",
+    "http_port": 8010,
+    "query_ws_port": 8011,
+    "admin_port": 8010,
+    "registration_expiry_interval": 12
+}

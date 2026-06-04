@@ -1,0 +1,17 @@
+services:
+  nmos-cpp-registry:
+    build:
+      context: ./
+    image: nmos-cpp-registry:latest
+    container_name: nmos-cpp-registry
+    hostname: nmos-cpp-registry
+
+    # Host networking is required for mDNS / DNS-SD (UDP 5353 multicast) so that
+    # NMOS nodes on the LAN can discover the registry.
+    network_mode: host
+
+    # Mount your own config to override the defaults if you like:
+    # volumes:
+    #   - ./registry.json:/home/registry.json:ro
+
+    restart: unless-stopped

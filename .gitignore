@@ -1,0 +1,6 @@
+# OS junk
+.DS_Store
+
+# local build artifacts
+build/
+*.img.tar.gz

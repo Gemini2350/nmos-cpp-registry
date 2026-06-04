@@ -107,30 +107,6 @@ IS-09 System API at `/x-nmos/system/v1.0/global/` reports PTP domain `0`
 Full list of settings:
 <https://github.com/sony/nmos-cpp/blob/master/Development/nmos/settings.h>
 
-## Notes
-
-- This image runs **HTTP only** (no TLS), which is what NMOS Crosspoint expects
-  by default. For secure (BCP-003-01) operation you'd add certificates and the
-  corresponding `registry.json` settings (and a reverse proxy or native
-  `server_secure`).
-- A **mosquitto** MQTT broker for IS-07 is bundled on port `1883` and advertised
-  via mDNS. Disable it with `-e RUN_MQTT=FALSE`.
-
-## Continuous integration
-
-`.github/workflows/docker.yml` builds the image on every push to `main` (and on
-`v*` tags) and pushes it to Docker Hub. For it to publish, add two repository
-secrets under **Settings → Secrets and variables → Actions**:
-
-| Secret | Value |
-|--------|-------|
-| `DOCKERHUB_USERNAME` | your Docker Hub username (also the image namespace) |
-| `DOCKERHUB_TOKEN` | a Docker Hub access token (Docker Hub → Account Settings → Security) |
-
-The workflow builds `linux/amd64` only. arm64 via QEMU on hosted runners is too
-slow for this C++/Conan build; enable it with a native arm runner or run
-`make buildx` locally.
-
 ## Credits
 
 Built on [sony/nmos-cpp](https://github.com/sony/nmos-cpp) and

@@ -14,28 +14,39 @@
 ############################################################
 # Stage 1 — build the nmos-js browser UI (static files)
 ############################################################
-# Node 18 LTS: required by nmos-js deps (e.g. jwt-decode@4 needs node >=18).
-# react-scripts 5 / webpack 5 build fine here without OpenSSL workarounds.
-FROM node:18-bullseye-slim AS js-build
+# Node 20 LTS: comfortably satisfies nmos-js + is12-client deps (some require
+# node >=18/20). react-scripts 5 / webpack 5 build fine here, no OpenSSL workarounds.
+FROM node:20-bullseye-slim AS js-build
 
-ARG NMOS_JS_VERSION=9f54c9b6387cb36f0945001e5192fb55ca4d8f2d
+ARG NMOS_JS_VERSION=ebbfd89dd2181124e48218f90a2d1a1ddab1f4b8
 # Do not fail the build on lint warnings, and skip source maps to save space.
 ENV CI=false
 ENV GENERATE_SOURCEMAP=false
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        git ca-certificates \
-    && rm -rf /var/lib/apt/lists/*
+        git ca-certificates jq \
+    && rm -rf /var/lib/apt/lists/* \
+    && corepack enable
 
 WORKDIR /src
 RUN git clone https://github.com/sony/nmos-js.git . \
     && git checkout ${NMOS_JS_VERSION}
 
+# Main app. Bake the IS-12 Device Model Browser base path into config.json so the
+# Devices page can launch the IS-12 client we ship at /admin/is12-client/.
 WORKDIR /src/Development
-RUN corepack enable \
+RUN jq '."IS-12 Browser".value = "/admin/is12-client"' src/config.json > src/config.tmp \
+    && mv src/config.tmp src/config.json \
     && yarn install --network-timeout 1000000 \
     && yarn build
 # -> static site in /src/Development/build
+
+# IS-12 Device Model Browser (separate CRA app, added by nmos-js PR #157).
+# Built under the /admin/is12-client sub-path via PUBLIC_URL so its assets resolve.
+WORKDIR /src/is12-client
+RUN yarn install --network-timeout 1000000 \
+    && PUBLIC_URL=/admin/is12-client yarn build
+# -> static site in /src/is12-client/build
 
 ############################################################
 # Stage 2 — build nmos-cpp-registry + mDNSResponder
@@ -43,7 +54,7 @@ RUN corepack enable \
 FROM ubuntu:24.04 AS cpp-build
 
 ENV DEBIAN_FRONTEND=noninteractive
-ARG NMOS_CPP_VERSION=079620d88756aa138ede92d3f52a0102370307fe
+ARG NMOS_CPP_VERSION=4062ff8938f4c6025d6be0c505fbc6281436aef9
 ARG MDNS_VERSION=878.260.1
 
 # Toolchain + everything Conan may need to build dependencies from source.
@@ -121,6 +132,8 @@ RUN make -C /opt/mDNSResponder/mDNSPosix os=linux install \
 # Registry binary, browser UI and default config.
 COPY --from=cpp-build /src/Development/build/nmos-cpp-registry /home/nmos-cpp-registry
 COPY --from=js-build  /src/Development/build                   /home/admin
+# IS-12 Device Model Browser, served by the registry at /admin/is12-client/.
+COPY --from=js-build  /src/is12-client/build                   /home/admin/is12-client
 COPY registry.json entrypoint.sh /home/
 RUN chmod +x /home/entrypoint.sh
 

@@ -16,7 +16,8 @@ nmos-cpp no longer supports. Current nmos-cpp requires **Conan 2.20+** and
 | Component | Detail |
 |-----------|--------|
 | `nmos-cpp-registry` | Built from `sony/nmos-cpp` (pinned commit, see `Dockerfile`), Conan 2 toolchain, `Release` build |
-| nmos-js Web UI | Served by the registry itself at `/admin/` on the registry port (`8010`) |
+| nmos-js Web UI | Served by the registry itself at `/admin/` on the registry port (`8010`); includes MXL support and the BCP-008 status monitor panels |
+| IS-12 Device Model Browser | The `nmos-js` IS-12 client, served at `/admin/is12-client/`; launched from the Devices page via a Control Protocol (`urn:x-nmos:control:ncp`) URI |
 | DNS-SD | Apple **mDNSResponder** built into the image (no host Avahi conflict) |
 | MQTT broker | **mosquitto** for IS-07 event transport, on `1883`, advertised via mDNS (`_nmos-mqtt._tcp`) |
 | Base | `ubuntu:24.04`, multi-stage → slim runtime |

@@ -18,7 +18,7 @@
 # node >=18/20). react-scripts 5 / webpack 5 build fine here, no OpenSSL workarounds.
 FROM node:20-bullseye-slim AS js-build
 
-ARG NMOS_JS_VERSION=ebbfd89dd2181124e48218f90a2d1a1ddab1f4b8
+ARG NMOS_JS_VERSION=8ff0aa2a4496b52da600cee77cf3e5c3e38948b3
 # Do not fail the build on lint warnings, and skip source maps to save space.
 ENV CI=false
 ENV GENERATE_SOURCEMAP=false
@@ -54,7 +54,7 @@ RUN yarn install --network-timeout 1000000 \
 FROM ubuntu:24.04 AS cpp-build
 
 ENV DEBIAN_FRONTEND=noninteractive
-ARG NMOS_CPP_VERSION=4062ff8938f4c6025d6be0c505fbc6281436aef9
+ARG NMOS_CPP_VERSION=d1c8da7bedd237f7c87b41b82376dea1c9637691
 ARG MDNS_VERSION=878.260.1
 
 # Toolchain + everything Conan may need to build dependencies from source.

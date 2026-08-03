@@ -108,6 +108,23 @@ IS-09 System API at `/x-nmos/system/v1.0/global/` reports PTP domain `0`
 Full list of settings:
 <https://github.com/sony/nmos-cpp/blob/master/Development/nmos/settings.h>
 
+## Companion: Scripty Monitoring Dashboard
+
+An optional separate container with the
+[NMOS Scripty Monitoring Dashboard](https://github.com/Gemini2350/nmos-scripty-monitoring-dashboard)
+(fork of [cristian-recoseanu's dashboard](https://github.com/cristian-recoseanu/nmos-scripty-monitoring-dashboard), MIT) —
+a BCP-008/IS-04 traffic-light system view that harvests this registry's Query
+API and opens IS-12/NCP sessions to the devices.
+
+```sh
+docker run -d --network host --restart unless-stopped \
+  --name nmos-scripty-dashboard gemini2350/nmos-scripty-dashboard:latest
+```
+
+Then open `http://<host>:3000/`. The bundled `docker-compose.yml` starts it
+alongside the registry. Configure via `NMOS_REGISTRY_HOST` / `NMOS_REGISTRY_PORT`
+(default `127.0.0.1:8010`) and `PORT` (default `3000`).
+
 ## Credits
 
 Built on [sony/nmos-cpp](https://github.com/sony/nmos-cpp) and

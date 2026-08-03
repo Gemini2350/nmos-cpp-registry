@@ -15,3 +15,17 @@ services:
     #   - ./registry.json:/home/registry.json:ro
 
     restart: unless-stopped
+
+  # Optional companion: BCP-008/IS-04 traffic-light monitoring dashboard.
+  # Source: https://github.com/Gemini2350/nmos-scripty-monitoring-dashboard
+  # Host networking so it can reach the registry (127.0.0.1:8010) and open
+  # IS-12/NCP WebSockets directly to devices on the media network.
+  scripty-dashboard:
+    image: gemini2350/nmos-scripty-dashboard:latest
+    container_name: nmos-scripty-dashboard
+    network_mode: host
+    environment:
+      NMOS_REGISTRY_HOST: 127.0.0.1
+      NMOS_REGISTRY_PORT: "8010"
+      PORT: "3000"
+    restart: unless-stopped

@@ -104,7 +104,34 @@ RUN conan profile detect --force \
     && cmake --build build --target nmos-cpp-registry --parallel "$(nproc)"
 
 ############################################################
-# Stage 3 — slim runtime image
+# Stage 3 — build the NMOS Scripty Monitoring Dashboard (Next.js SSR)
+############################################################
+# BCP-008/IS-04 traffic-light dashboard by cristian-recoseanu (MIT).
+# Needs Node 24+; built as a Next.js "standalone" bundle so the runtime
+# only needs the node binary + a self-contained server directory.
+FROM node:24-bookworm-slim AS dashboard-build
+
+ARG SCRIPTY_VERSION=64bfeeff654856fee7942a08a4bbd9e043e2c225
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        curl ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /src
+RUN curl -fsSL https://codeload.github.com/cristian-recoseanu/nmos-scripty-monitoring-dashboard/tar.gz/${SCRIPTY_VERSION} \
+    | tar zx --strip-components=1
+
+# Enable Next.js standalone output (minimal server + pruned node_modules).
+RUN sed -i 's|const nextConfig: NextConfig = {|const nextConfig: NextConfig = {\n  output: "standalone",|' next.config.ts \
+    && npm ci \
+    && npm run build \
+    # standalone bundle expects static assets + public alongside server.js
+    && cp -r .next/static .next/standalone/.next/static \
+    && cp -r public .next/standalone/public
+# -> self-contained app in /src/.next/standalone (run: node server.js)
+
+############################################################
+# Stage 4 — slim runtime image
 ############################################################
 FROM ubuntu:24.04
 
@@ -134,12 +161,18 @@ COPY --from=cpp-build /src/Development/build/nmos-cpp-registry /home/nmos-cpp-re
 COPY --from=js-build  /src/Development/build                   /home/admin
 # IS-12 Device Model Browser, served by the registry at /admin/is12-client/.
 COPY --from=js-build  /src/is12-client/build                   /home/admin/is12-client
+# Scripty Monitoring Dashboard (Next.js standalone) + the Node 24 runtime to run it.
+# The node binary from the bookworm image runs fine on Ubuntu 24.04 (newer glibc).
+COPY --from=dashboard-build /usr/local/bin/node /usr/local/bin/node
+COPY --from=dashboard-build /src/.next/standalone /home/dashboard
+RUN mkdir -p /home/dashboard/logs
 COPY registry.json entrypoint.sh /home/
 RUN chmod +x /home/entrypoint.sh
 
 # 8010 IS-04 Registration/Query API + admin UI (nmos-js, served at /admin/)
 # 8011 Query API WebSocket   1883 MQTT broker (IS-07)   5353/udp mDNS
-EXPOSE 8010 8011 1883 5353/udp
+# 3000 Scripty Monitoring Dashboard (BCP-008 traffic lights)
+EXPOSE 8010 8011 1883 3000 5353/udp
 
 # WORKDIR matters: the registry serves the admin UI from ./admin
 WORKDIR /home

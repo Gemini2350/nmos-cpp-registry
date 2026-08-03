@@ -20,6 +20,7 @@ nmos-cpp no longer supports. Current nmos-cpp requires **Conan 2.20+** and
 | IS-12 Device Model Browser | The `nmos-js` IS-12 client, served at `/admin/is12-client/`; launched from the Devices page via a Control Protocol (`urn:x-nmos:control:ncp`) URI |
 | DNS-SD | Apple **mDNSResponder** built into the image (no host Avahi conflict) |
 | MQTT broker | **mosquitto** for IS-07 event transport, on `1883`, advertised via mDNS (`_nmos-mqtt._tcp`) |
+| Monitoring dashboard | [nmos-scripty-monitoring-dashboard](https://github.com/cristian-recoseanu/nmos-scripty-monitoring-dashboard) (MIT) on port `3000` — BCP-008/IS-04 traffic-light system view, pre-wired to this registry |
 | Base | `ubuntu:24.04`, multi-stage → slim runtime |
 
 ## Quick start (Docker Hub)
@@ -71,9 +72,11 @@ docker compose up -d        # uses docker-compose.yml (host network)
 | 8010 | IS-04 Registration API + Query API (HTTP) **and** the nmos-js browser UI at `/admin/` |
 | 8011 | Query API WebSocket |
 | 1883 | MQTT broker (mosquitto) for IS-07 |
+| 3000 | Scripty Monitoring Dashboard (BCP-008/IS-04 traffic lights) |
 | 5353/udp | mDNS / DNS-SD |
 
 - Browser UI: `http://<host>:8010/admin/`
+- Monitoring dashboard: `http://<host>:3000/`
 - Point NMOS Crosspoint's registry setting at `http://<host>:8010`.
 
 The UI and the API share port 8010 (`admin_port` == `http_port` in `registry.json`).
@@ -100,6 +103,10 @@ Environment variables:
 | `RUN_MQTT` | `TRUE` | Start the bundled mosquitto MQTT broker (IS-07) |
 | `MQTT_PORT` | `1883` | MQTT broker listen port |
 | `ADVERTISE_MQTT` | `TRUE` | Advertise the broker via mDNS (`_nmos-mqtt._tcp`) |
+| `RUN_DASHBOARD` | `TRUE` | Start the bundled Scripty Monitoring Dashboard |
+| `DASHBOARD_PORT` | `3000` | Dashboard listen port |
+| `NMOS_REGISTRY_HOST` / `NMOS_REGISTRY_PORT` | `127.0.0.1` / `8010` | Which Query API the dashboard harvests (defaults to this container's registry) |
+| `DASHBOARD_LOG_LEVEL` | `info` | Dashboard log level (`fatal`…`trace`) |
 
 The default [`registry.json`](registry.json) sets **`ptp_domain_number: 0`**, so the
 IS-09 System API at `/x-nmos/system/v1.0/global/` reports PTP domain `0`
@@ -111,5 +118,7 @@ Full list of settings:
 ## Credits
 
 Built on [sony/nmos-cpp](https://github.com/sony/nmos-cpp) and
-[sony/nmos-js](https://github.com/sony/nmos-js) (both Apache-2.0). Inspired by
+[sony/nmos-js](https://github.com/sony/nmos-js) (both Apache-2.0), and bundles the
+[nmos-scripty-monitoring-dashboard](https://github.com/cristian-recoseanu/nmos-scripty-monitoring-dashboard)
+by Cristian Recoseanu (MIT). Inspired by
 [rhastie/build-nmos-cpp](https://github.com/rhastie/build-nmos-cpp).

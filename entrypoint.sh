@@ -50,26 +50,6 @@ else
     echo "MQTT broker disabled (RUN_MQTT=${RUN_MQTT:-TRUE})"
 fi
 
-# Optional Scripty Monitoring Dashboard (BCP-008/IS-04 traffic lights, Next.js).
-#   RUN_DASHBOARD=TRUE|FALSE  start the dashboard          (default TRUE)
-#   DASHBOARD_PORT=<port>     dashboard listen port        (default 3000)
-# It talks to the registry's Query API in this container by default.
-if [ "${RUN_DASHBOARD:-TRUE}" = "TRUE" ] && [ -f /home/dashboard/server.js ]; then
-    DASHBOARD_PORT="${DASHBOARD_PORT:-3000}"
-    echo "Starting Scripty Monitoring Dashboard on port ${DASHBOARD_PORT}"
-    (
-        cd /home/dashboard
-        PORT="${DASHBOARD_PORT}" \
-        HOSTNAME="0.0.0.0" \
-        NMOS_REGISTRY_HOST="${NMOS_REGISTRY_HOST:-127.0.0.1}" \
-        NMOS_REGISTRY_PORT="${NMOS_REGISTRY_PORT:-8010}" \
-        LOG_LEVEL="${DASHBOARD_LOG_LEVEL:-info}" \
-        node server.js &
-    ) || echo "WARN: dashboard failed to start"
-else
-    echo "Scripty dashboard disabled (RUN_DASHBOARD=${RUN_DASHBOARD:-TRUE})"
-fi
-
 echo "Starting nmos-cpp-registry with config: $CONFIG"
 cat "$CONFIG"
 echo

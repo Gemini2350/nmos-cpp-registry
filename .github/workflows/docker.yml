@@ -1,6 +1,12 @@
 name: build-and-push
 
-# Builds the image and pushes it to Docker Hub.
+# Builds the image for linux/amd64 and linux/arm64 and pushes a multi-arch
+# manifest to Docker Hub.
+#
+# nmos-cpp is a heavy C++/Conan build, far too slow under QEMU emulation, so
+# each platform builds NATIVELY on a matching hosted runner (ubuntu-24.04-arm
+# is free for public repos). The per-platform images are pushed by digest and
+# then merged into one manifest list.
 #
 # Required repository secrets (Settings -> Secrets and variables -> Actions):
 #   DOCKERHUB_USERNAME  your Docker Hub username (also used as the image namespace)
@@ -15,8 +21,18 @@ on:
   workflow_dispatch:
 
 jobs:
-  docker:
-    runs-on: ubuntu-latest
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux/amd64
+            arch: amd64
+            runner: ubuntu-latest
+          - platform: linux/arm64
+            arch: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -24,7 +40,6 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      # Only log in / push for real pushes, not pull requests.
       - name: Log in to Docker Hub
         if: github.event_name != 'pull_request'
         uses: docker/login-action@v3
@@ -32,7 +47,75 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Image metadata (tags & labels)
+      - name: Image metadata (labels)
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ secrets.DOCKERHUB_USERNAME }}/nmos-cpp-registry
+
+      # Pull requests: just prove the platform builds; nothing is pushed.
+      - name: Build (PR only)
+        if: github.event_name == 'pull_request'
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: ${{ matrix.platform }}
+          push: false
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=${{ matrix.arch }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.arch }}
+
+      # Pushes: publish by digest; the merge job below tags the manifest list.
+      - name: Build and push by digest
+        id: build
+        if: github.event_name != 'pull_request'
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: ${{ matrix.platform }}
+          labels: ${{ steps.meta.outputs.labels }}
+          outputs: type=image,name=docker.io/${{ secrets.DOCKERHUB_USERNAME }}/nmos-cpp-registry,push-by-digest=true,name-canonical=true,push=true
+          cache-from: type=gha,scope=${{ matrix.arch }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.arch }}
+
+      - name: Export digest
+        if: github.event_name != 'pull_request'
+        run: |
+          mkdir -p ${{ runner.temp }}/digests
+          digest="${{ steps.build.outputs.digest }}"
+          touch "${{ runner.temp }}/digests/${digest#sha256:}"
+
+      - name: Upload digest
+        if: github.event_name != 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: digests-${{ matrix.arch }}
+          path: ${{ runner.temp }}/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+  merge:
+    if: github.event_name != 'pull_request'
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download digests
+        uses: actions/download-artifact@v4
+        with:
+          path: ${{ runner.temp }}/digests
+          pattern: digests-*
+          merge-multiple: true
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Image metadata (tags)
         id: meta
         uses: docker/metadata-action@v5
         with:
@@ -42,17 +125,13 @@ jobs:
             type=ref,event=tag
             type=sha,format=short
 
-      - name: Build and push
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          # amd64 only: nmos-cpp is a heavy C++/Conan build; an emulated arm64
-          # build under QEMU on hosted runners is extremely slow and can hit the
-          # job time limit. To add arm64, use a native arm runner (or local
-          # `make buildx`) and set: platforms: linux/amd64,linux/arm64
-          platforms: linux/amd64
-          push: ${{ github.event_name != 'pull_request' }}
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+      - name: Create multi-arch manifest and push tags
+        working-directory: ${{ runner.temp }}/digests
+        run: |
+          docker buildx imagetools create \
+            $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
+            $(printf 'docker.io/${{ secrets.DOCKERHUB_USERNAME }}/nmos-cpp-registry@sha256:%s ' *)
+
+      - name: Inspect result
+        run: |
+          docker buildx imagetools inspect docker.io/${{ secrets.DOCKERHUB_USERNAME }}/nmos-cpp-registry:latest

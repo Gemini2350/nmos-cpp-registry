@@ -18,7 +18,10 @@
 # node >=18/20). react-scripts 5 / webpack 5 build fine here, no OpenSSL workarounds.
 FROM node:20-bullseye-slim AS js-build
 
-ARG NMOS_JS_VERSION=8ff0aa2a4496b52da600cee77cf3e5c3e38948b3
+# Built from the Gemini2350/nmos-js fork: adds a Paging Limit 'Off' option for
+# Query APIs without pagination support (501 Not Implemented on paging.*).
+ARG NMOS_JS_REPO=https://github.com/Gemini2350/nmos-js.git
+ARG NMOS_JS_VERSION=728f9c168666577f152f9f2a873215d3e55d6501
 # Do not fail the build on lint warnings, and skip source maps to save space.
 ENV CI=false
 ENV GENERATE_SOURCEMAP=false
@@ -29,7 +32,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && corepack enable
 
 WORKDIR /src
-RUN git clone https://github.com/sony/nmos-js.git . \
+RUN git clone ${NMOS_JS_REPO} . \
     && git checkout ${NMOS_JS_VERSION}
 
 # Main app. Bake the IS-12 Device Model Browser base path into config.json so the

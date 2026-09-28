@@ -14,9 +14,9 @@
 ############################################################
 # Stage 1 — build the nmos-js browser UI (static files)
 ############################################################
-# Node 20 LTS: comfortably satisfies nmos-js + is12-client deps (some require
-# node >=18/20). react-scripts 5 / webpack 5 build fine here, no OpenSSL workarounds.
-FROM node:20-bullseye-slim AS js-build
+# Node 22 LTS on bookworm: bullseye's apt repos are archived (404s) and Node 20
+# is EOL. react-scripts 5 / webpack 5 build fine here, no OpenSSL workarounds.
+FROM node:22-bookworm-slim AS js-build
 
 # Built from the Gemini2350/nmos-js fork: adds a Paging Limit 'Off' option for
 # Query APIs without pagination support (501 Not Implemented on paging.*).

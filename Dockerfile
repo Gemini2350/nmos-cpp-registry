@@ -21,7 +21,7 @@ FROM node:20-bullseye-slim AS js-build
 # Built from the Gemini2350/nmos-js fork: adds a Paging Limit 'Off' option for
 # Query APIs without pagination support (501 Not Implemented on paging.*).
 ARG NMOS_JS_REPO=https://github.com/Gemini2350/nmos-js.git
-ARG NMOS_JS_VERSION=728f9c168666577f152f9f2a873215d3e55d6501
+ARG NMOS_JS_VERSION=9432f955535dfc912f1a080b04ecba97dbf2d9e2
 # Do not fail the build on lint warnings, and skip source maps to save space.
 ENV CI=false
 ENV GENERATE_SOURCEMAP=false
@@ -57,7 +57,7 @@ RUN yarn install --network-timeout 1000000 \
 FROM ubuntu:24.04 AS cpp-build
 
 ENV DEBIAN_FRONTEND=noninteractive
-ARG NMOS_CPP_VERSION=d1c8da7bedd237f7c87b41b82376dea1c9637691
+ARG NMOS_CPP_VERSION=83607566860fde1d6a519dfdd904751f13653fe8
 ARG MDNS_VERSION=878.260.1
 
 # Toolchain + everything Conan may need to build dependencies from source.

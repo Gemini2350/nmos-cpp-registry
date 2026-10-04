@@ -35,6 +35,15 @@ WORKDIR /src
 RUN git clone ${NMOS_JS_REPO} . \
     && git checkout ${NMOS_JS_VERSION}
 
+# Favicon: upstream nmos-js ships no favicon at all (no <link rel="icon"> and no
+# favicon.ico), so inject both; the IS-12 client already references icon.png but
+# does not ship the file. CRA copies public/* into the build output.
+COPY branding/favicon.ico /src/Development/public/favicon.ico
+COPY branding/icon.png    /src/is12-client/public/icon.png
+RUN sed -i 's|<link rel="manifest"|<link rel="icon" href="%PUBLIC_URL%/favicon.ico" />\n    <link rel="manifest"|' \
+        /src/Development/public/index.html \
+    && grep -q 'rel="icon"' /src/Development/public/index.html
+
 # Main app. Bake the IS-12 Device Model Browser base path into config.json so the
 # Devices page can launch the IS-12 client we ship at /admin/is12-client/.
 WORKDIR /src/Development

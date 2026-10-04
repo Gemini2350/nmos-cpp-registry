@@ -50,6 +50,48 @@ else
     echo "MQTT broker disabled (RUN_MQTT=${RUN_MQTT:-TRUE})"
 fi
 
+# --- DNS-SD SRV target (host_name) ---
+# mDNS hostname conflicts can rename the responder's .local name while the
+# SRV records keep the configured target, leaving it unresolvable. Pointing
+# host_name at the host's unicast DNS name avoids that entirely.
+#   HOST_NAME=<fqdn>            force a specific name
+#   AUTO_HOST_NAME=TRUE|FALSE   derive it from reverse DNS (default TRUE);
+#                               only used when it forward-resolves back to
+#                               this host's address, otherwise the mDNS
+#                               default (<hostname>.local) stays in effect
+if ! grep -q '"host_name"' "$CONFIG"; then
+    host_name=""
+    if [ -n "${HOST_NAME:-}" ]; then
+        host_name="$HOST_NAME"
+        echo "Using DNS-SD host_name from HOST_NAME: $host_name"
+    elif [ "${AUTO_HOST_NAME:-TRUE}" = "TRUE" ]; then
+        primary_ip="$(hostname -I 2>/dev/null | cut -d' ' -f1)"
+        if [ -n "$primary_ip" ]; then
+            # reverse lookup: "<ip> <canonical name>"
+            set -- $(getent hosts "$primary_ip" 2>/dev/null) || true
+            candidate="${2:-}"
+            # accept only a real FQDN that resolves back to the same address
+            case "$candidate" in
+                *.*)
+                    if getent hosts "$candidate" 2>/dev/null | grep -qw "$primary_ip"; then
+                        host_name="$candidate"
+                        echo "Using DNS-SD host_name from reverse DNS: $host_name ($primary_ip)"
+                    else
+                        echo "Reverse DNS name '$candidate' does not resolve back to $primary_ip - keeping mDNS default"
+                    fi
+                    ;;
+                *)
+                    echo "No usable reverse DNS name for $primary_ip - keeping mDNS default"
+                    ;;
+            esac
+        fi
+    fi
+    if [ -n "$host_name" ] && command -v jq >/dev/null 2>&1; then
+        jq --arg h "$host_name" '. + {host_name: $h}' "$CONFIG" > /run/registry-effective.json \
+            && CONFIG=/run/registry-effective.json
+    fi
+fi
+
 echo "Starting nmos-cpp-registry with config: $CONFIG"
 cat "$CONFIG"
 echo

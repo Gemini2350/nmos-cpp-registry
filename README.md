@@ -100,10 +100,20 @@ Environment variables:
 | `RUN_MQTT` | `TRUE` | Start the bundled mosquitto MQTT broker (IS-07) |
 | `MQTT_PORT` | `1883` | MQTT broker listen port |
 | `ADVERTISE_MQTT` | `TRUE` | Advertise the broker via mDNS (`_nmos-mqtt._tcp`) |
+| `AUTO_HOST_NAME` | `TRUE` | Derive the DNS-SD SRV target (`host_name`) from the host's reverse DNS, if it forward-resolves back to the same address; otherwise keep the mDNS default |
+| `HOST_NAME` | *(unset)* | Force a specific DNS-SD SRV target, e.g. `registry.example.net` |
 
 The default [`registry.json`](registry.json) sets **`ptp_domain_number: 0`**, so the
 IS-09 System API at `/x-nmos/system/v1.0/global/` reports PTP domain `0`
 (nmos-cpp's own default is `127`). Change it there if your PTP domain differs.
+
+**Why `host_name` matters:** mDNS hostname conflicts (e.g. a second responder on
+the Docker host, or a restart race) can rename the responder's `<hostname>.local`
+while the SRV records keep pointing at the old name, which then no longer
+resolves — devices see the registry in a browse but cannot connect. With a
+unicast DNS `host_name` (auto-detected or via `HOST_NAME`), the SRV target is
+immune to that. A `host_name` already present in your mounted `registry.json`
+is always left untouched.
 
 Full list of settings:
 <https://github.com/sony/nmos-cpp/blob/master/Development/nmos/settings.h>

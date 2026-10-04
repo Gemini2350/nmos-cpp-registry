@@ -122,7 +122,7 @@ LABEL org.opencontainers.image.title="nmos-cpp-registry" \
 RUN apt-get update && apt-get install -y --no-install-recommends \
         ca-certificates make \
         libssl3 libatomic1 \
-        mosquitto \
+        mosquitto jq \
     && rm -rf /var/lib/apt/lists/*
 
 # Bring over the patched mDNSResponder tree and install only its artifacts

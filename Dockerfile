@@ -21,7 +21,7 @@ FROM node:22-bookworm-slim AS js-build
 # Built from the Gemini2350/nmos-js fork: adds a Paging Limit 'Off' option for
 # Query APIs without pagination support (501 Not Implemented on paging.*).
 ARG NMOS_JS_REPO=https://github.com/Gemini2350/nmos-js.git
-ARG NMOS_JS_VERSION=9432f955535dfc912f1a080b04ecba97dbf2d9e2
+ARG NMOS_JS_VERSION=13c1859a9957b79c84d6647af975585f1a32a0c8
 # Do not fail the build on lint warnings, and skip source maps to save space.
 ENV CI=false
 ENV GENERATE_SOURCEMAP=false
@@ -66,7 +66,7 @@ RUN yarn install --network-timeout 1000000 \
 FROM ubuntu:24.04 AS cpp-build
 
 ENV DEBIAN_FRONTEND=noninteractive
-ARG NMOS_CPP_VERSION=83607566860fde1d6a519dfdd904751f13653fe8
+ARG NMOS_CPP_VERSION=b6c83670ba6b37c55b8e4f0b440268016e1b5941
 ARG MDNS_VERSION=878.260.1
 
 # Toolchain + everything Conan may need to build dependencies from source.
